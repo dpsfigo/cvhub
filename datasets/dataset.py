@@ -8,6 +8,7 @@ Description: 请填写简介
 import os
 import numpy as np
 import cv2
+import torch
 
 def get_img_list(data_root, filename):
     data = np.loadtxt(os.path.join(data_root, filename), dtype="str")
@@ -18,17 +19,19 @@ def get_img_list(data_root, filename):
     
 
 class Dataset():
-    def __init__(self, data_root, filelist) -> None:
-        self.data = get_img_list(data_root, filelist)
+    def __init__(self, data_root, filelist_root, filelist) -> None:
+        self.data = get_img_list(filelist_root, filelist)
         self.data_root = data_root
     
     def __len__(self):
         return self.data.shape[0]
     
     def __getitem__(self, index):
-        filename = self.data[index]
-        img = cv2.imread(filename)
-        label = self.label[index]
-        return img, label
-        pass
-        
+        while 1:
+            data = self.data[index]
+            img = cv2.imread(os.path.join(self.data_root,data[0]+".jpg"))
+            img = cv2.resize(img, (256, 256))
+            label = int(data[1])
+            # x = torch.FloatTensor(img)
+            # y = torch.FloatTensor(label)
+            return img, label
