@@ -2,13 +2,13 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-06-29 17:14:30
+LastEditTime: 2023-07-04 17:16:02
 Description: AlexNet backbone
 '''
 import torch
 import torch.nn as nn
 
-class AlenNet(nn.module):
+class AlenNet(nn.Module):
     def __init__ (self, num_classes):
         super().__init__()
         self.num_classes = num_classes
