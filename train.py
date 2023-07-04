@@ -25,6 +25,9 @@ parser.add_argument('--checkpoint_dir', help='Save checkpoints to this directory
 parser.add_argument('--checkpoint_path', help='Resume model from this checkpoint', default=None, type=str)
 args = parser.parse_args()
 
+global_step = 0
+global_epoch = 0
+
 def load_checkpoint(path, model, optimizer, reset_optimizer=False, overwrite_global_states=True):
     global global_step
     global global_epoch
@@ -49,7 +52,7 @@ def load_checkpoint(path, model, optimizer, reset_optimizer=False, overwrite_glo
 
     return model
 
-def train(device, model, train_data_loader, test_data_loader, optimizer, loss_func,
+def train(device, model, train_data_loader, test_data_loader, optimizer, logger, loss_func,
           checkpoint_dir=None, checkpoint_interval=None, nepochs=None):
 
     global global_step, global_epoch
@@ -139,8 +142,8 @@ def _load(checkpoint_path):
 
 if __name__ == "__main__":
     torch.manual_seed(3407)
-    train_dataset = Dataset(args.file_list, "trainval.txt")
-    val_dataset = Dataset(args.file_list, "test.txt")
+    train_dataset = Dataset(args.data_root, args.file_list, "trainval.txt")
+    val_dataset = Dataset(args.data_root, args.file_list, "test.txt")
 
     train_data_loader = data_utils.DataLoader(train_dataset, hparams.batch_size, shuffle=True)
     val_data_loader = data_utils.DataLoader(val_dataset, hparams.batch_size, shuffle=True)
@@ -156,7 +159,7 @@ if __name__ == "__main__":
     log_path = '{}/train'.format(args.checkpoint_dir)
     logger = logging_util.LoggingUtil(log_path).getLogger(__name__)
     loss_func = torch.nn.CrossEntropyLoss()
-    train(device, model, train_data_loader, val_data_loader, optimizer, logger, loss_func, 
+    train(device, model, train_data_loader, val_data_loader, optimizer, logger, loss_func,
           checkpoint_dir=args.checkpoint_dir,
           checkpoint_interval=hparams.checkpoint_interval,
           nepochs=hparams.nepochs)
