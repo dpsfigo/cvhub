@@ -2,13 +2,13 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-07-04 17:16:02
+LastEditTime: 2023-07-05 14:28:37
 Description: AlexNet backbone
 '''
 import torch
 import torch.nn as nn
 
-class AlenNet(nn.Module):
+class AlexNet(nn.Module):
     def __init__ (self, num_classes):
         super().__init__()
         self.num_classes = num_classes
@@ -41,7 +41,8 @@ class AlenNet(nn.Module):
             nn.Linear(4096, num_classes)
         )
     
-    def forword(self, x:torch.Tensor)->torch.Tensor:
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        x = x.view(-1,3,224,224)
         x = self.features(x)
         if self.num_classes > 0:
             x = x.view(x.size(0), 256*6*6)

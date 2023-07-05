@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-07-04 19:49:25
+LastEditTime: 2023-07-05 16:09:07
 Description: 请填写简介
 '''
 import argparse
@@ -12,7 +12,7 @@ import torch
 from torch.utils import data as data_utils
 from torch import optim
 
-from models.classification.alexnet import AlenNet
+from models.classification.alexnet import AlexNet
 from utils import logging_util
 from os.path import join
 from tqdm import tqdm
@@ -67,7 +67,8 @@ def train(device, model, train_data_loader, test_data_loader, optimizer, logger,
             optimizer.zero_grad()
 
             # Move data to CUDA device
-            x = x.to(device)
+            x = x.float().to(device)
+            # x = torch.FloatTensor(x).to(device)
             gt = gt.to(device)
 
             pred = model(x)
@@ -84,7 +85,7 @@ def train(device, model, train_data_loader, test_data_loader, optimizer, logger,
                 save_checkpoint(
                     model, optimizer, global_step, checkpoint_dir, global_epoch)
 
-            if global_step == 1 or global_step % hparams.eval_interval == 0:
+            if global_step == 1 or global_step % hparams.checkpoint_interval == 0:
                 with torch.no_grad():
                     eval_model(test_data_loader, global_step, device, model, checkpoint_dir, loss_func)
 
@@ -102,7 +103,7 @@ def eval_model(test_data_loader, global_step, device, model, checkpoint_dir, los
             model.eval()
 
             # Move data to CUDA device
-            x = x.to(device)
+            x = x.float().to(device)
             gt = gt.to(device)
 
             pred = model(x)
@@ -150,15 +151,17 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = AlenNet(num_classes=2)
-    optimizer = optim.Adam([p for p in model.parameters() if p.requires_grad], lr=hparams.initial_learning_rate)
+    net = AlexNet(num_classes=2)
+    optimizer = optim.Adam([p for p in net.parameters() if p.requires_grad], lr=hparams.initial_learning_rate)
+    # optimizer = torch.optim.SGD(net.parameters(), lr=1e-3, momentum=0.9, weight_decay=5e-6)
 
     if args.checkpoint_path is not None:
-        load_checkpoint(args.checkpoint_path, model, optimizer, reset_optimizer=False)
+        load_checkpoint(args.checkpoint_path, net, optimizer, reset_optimizer=False)
         
     log_path = '{}/train'.format(args.checkpoint_dir)
     logger = logging_util.LoggingUtil(log_path).getLogger(__name__)
     loss_func = torch.nn.CrossEntropyLoss()
+    model = net.to(device)
     train(device, model, train_data_loader, val_data_loader, optimizer, logger, loss_func,
           checkpoint_dir=args.checkpoint_dir,
           checkpoint_interval=hparams.checkpoint_interval,
