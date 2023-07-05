@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-07-05 16:09:07
+LastEditTime: 2023-07-05 18:08:27
 Description: 请填写简介
 '''
 import argparse
@@ -11,11 +11,13 @@ from scripts.hparams import hparams
 import torch
 from torch.utils import data as data_utils
 from torch import optim
+import torch.nn.functional as F
 
 from models.classification.alexnet import AlexNet
 from utils import logging_util
 from os.path import join
 from tqdm import tqdm
+import time
 
 
 parser = argparse.ArgumentParser(description='Code to train the model')
@@ -27,6 +29,17 @@ args = parser.parse_args()
 
 global_step = 0
 global_epoch = 0
+
+def accuracy(output, target, topk=(1, )):
+    """Computes the precision@k for the specified values of k."""
+    with torch.no_grad():
+        maxk = max(topk)
+        #outputs = torch.sigmoid(output)
+        outputs = F.softmax(output, 1)
+        _, pred = outputs.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.reshape(1, -1).expand_as(pred)).reshape(-1).float().sum()# / pred.shape[1]
+        return correct
 
 def load_checkpoint(path, model, optimizer, reset_optimizer=False, overwrite_global_states=True):
     global global_step
@@ -52,7 +65,7 @@ def load_checkpoint(path, model, optimizer, reset_optimizer=False, overwrite_glo
 
     return model
 
-def train(device, model, train_data_loader, test_data_loader, optimizer, logger, loss_func,
+def train(device, model, train_data_loader, train_dataset_len, test_data_loader, test_dataset_len, optimizer, logger, loss_func,
           checkpoint_dir=None, checkpoint_interval=None, nepochs=None):
 
     global global_step, global_epoch
@@ -62,6 +75,7 @@ def train(device, model, train_data_loader, test_data_loader, optimizer, logger,
         print('Starting Epoch: {}'.format(global_epoch))
         running_sync_loss, running_l1_loss = 0., 0.
         prog_bar = tqdm(enumerate(train_data_loader))
+        
         for step, (x,  gt) in prog_bar:
             model.train()
             optimizer.zero_grad()
@@ -74,6 +88,7 @@ def train(device, model, train_data_loader, test_data_loader, optimizer, logger,
             pred = model(x)
 
             loss = loss_func(pred, gt)
+            
 
             loss.backward()
             optimizer.step()
@@ -87,37 +102,38 @@ def train(device, model, train_data_loader, test_data_loader, optimizer, logger,
 
             if global_step == 1 or global_step % hparams.checkpoint_interval == 0:
                 with torch.no_grad():
-                    eval_model(test_data_loader, global_step, device, model, checkpoint_dir, loss_func)
+                    eval_model(test_data_loader, test_dataset_len, global_step, device, model, checkpoint_dir, loss_func)
 
         global_epoch += 1
         
 
-def eval_model(test_data_loader, global_step, device, model, checkpoint_dir, loss_func):
+def eval_model(test_data_loader, test_dataset_len, global_step, device, model, checkpoint_dir, loss_func):
     eval_steps = 700
-    print('Evaluating for {} steps'.format(eval_steps))
     losses = []
     step = 0
-    while 1:
-        for x, gt in test_data_loader:
-            step += 1
-            model.eval()
+    acc = 0.0
+    for x, gt in test_data_loader:
+        step += 1
+        model.eval()
 
-            # Move data to CUDA device
-            x = x.float().to(device)
-            gt = gt.to(device)
+        # Move data to CUDA device
+        x = x.float().to(device)
+        gt = gt.to(device)
+        pred = model(x)
 
-            pred = model(x)
+        loss = loss_func(pred, gt)
 
-            loss = loss_func(pred, gt)
+        losses.append(loss.item())
+        acc += accuracy(pred, gt).item()
 
-            losses.append(loss.item())
+        # if step > eval_steps: 
+        #     averaged_loss = sum(losses) / len(losses)
 
-            if step > eval_steps: 
-                averaged_loss = sum(losses) / len(losses)
+        #     print('loss: {}'.format(averaged_loss))
 
-                print('loss: {}'.format(averaged_loss))
-
-                return averaged_loss
+        #     return averaged_loss
+    acc = acc/test_dataset_len
+    print(acc)
 
 def save_checkpoint(model, optimizer, step, checkpoint_dir, epoch):
 
@@ -162,7 +178,7 @@ if __name__ == "__main__":
     logger = logging_util.LoggingUtil(log_path).getLogger(__name__)
     loss_func = torch.nn.CrossEntropyLoss()
     model = net.to(device)
-    train(device, model, train_data_loader, val_data_loader, optimizer, logger, loss_func,
+    train(device, model, train_data_loader, train_dataset.data.shape[0], val_data_loader, val_dataset.data.shape[0], optimizer, logger, loss_func,
           checkpoint_dir=args.checkpoint_dir,
           checkpoint_interval=hparams.checkpoint_interval,
           nepochs=hparams.nepochs)
