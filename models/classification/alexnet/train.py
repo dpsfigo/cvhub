@@ -2,20 +2,20 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-07-06 19:26:53
+LastEditTime: 2023-07-06 19:42:28
 Description: 请填写简介
 '''
 import argparse
-from datasets.dataset import Dataset
-import hparams
+# from datasets.dataset import Dataset
+from hparams import hparams
 import torch
 from torch.utils import data as data_utils
 from torch import optim
 import torch.nn.functional as F
 from torchvision import transforms, datasets, utils
 
-from models.classification.alexnet import AlexNet
-from utils import logging_util
+from alexnet import AlexNet
+# from utils import logging_util
 from os.path import join
 from tqdm import tqdm
 import time
@@ -67,7 +67,7 @@ def load_checkpoint(path, model, optimizer, reset_optimizer=False, overwrite_glo
 
     return model
 
-def train(device, model, train_data_loader, train_dataset_len, test_data_loader, test_dataset_len, optimizer, logger, loss_func,
+def train(device, model, train_data_loader, train_dataset_len, test_data_loader, test_dataset_len, optimizer, loss_func,
           checkpoint_dir=None, checkpoint_interval=None, nepochs=None):
 
     global global_step, global_epoch
@@ -172,52 +172,46 @@ if __name__ == "__main__":
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     }
-    data_root = os.path.abspath(os.path.join(os.gewcwd(), "../../../"))
-    image_path = os.path.join(data_root, "data_set", "flower_data")
+    data_root = os.path.abspath(os.path.join(os.getcwd(), "./"))
+    image_path = os.path.join(data_root, "data", "flower_data")
 
-    train_dataset = Dataset(args.data_root, args.file_list, "trainval.txt")
-    val_dataset = Dataset(args.data_root, args.file_list, "test.txt")
+    # train_dataset = Dataset(args.data_root, args.file_list, "trainval.txt")
+    # val_dataset = Dataset(args.data_root, args.file_list, "test.txt")
     assert os.path.exists(image_path), "{} path does not exist.".format(image_path)
     train_dataset = datasets.ImageFolder(root=os.path.join(image_path, "train"), transform=data_transform["train"])
     train_num = len(train_dataset)
 
     label_list = train_dataset.class_to_idx
     class_dict = dict((value, key)for key, value in label_list.items())
-    label_json = json.dump(class_dict, indent=4)
+    label_json = json.dumps(class_dict, indent=4)
     with open("class_indices.json", "w") as f:
         f.write(label_json)
     
     batch_size = hparams.batch_size
     number_worker = hparams.number_worker
-    train_data_loader = torch.utils.data.Dataloader(train_dataset,
+    train_data_loader = torch.utils.data.DataLoader(train_dataset,
                                                batch_size=batch_size, shuffle=True,
-                                               number_worker= number_worker)
+                                               num_workers= number_worker)
     
     val_dataset = datasets.ImageFolder(root=os.path.join(image_path, "val"), transform=data_transform["val"])
     val_num = len(val_dataset)
-    val_data_loader = torch.utils.data.Dataloader(val_dataset,
+    val_data_loader = torch.utils.data.DataLoader(val_dataset,
                                                batch_size=batch_size, shuffle=False,
-                                               number_worker= number_worker)
-
-
-
-    # train_data_loader = data_utils.DataLoader(train_dataset, hparams.batch_size, shuffle=True)
-    # val_data_loader = data_utils.DataLoader(val_dataset, hparams.batch_size, shuffle=True)
+                                               num_workers= number_worker)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    net = AlexNet(num_classes=2)
-    optimizer = optim.Adam([p for p in net.parameters() if p.requires_grad], lr=hparams.initial_learning_rate)
-    # optimizer = torch.optim.SGD(net.parameters(), lr=1e-3, momentum=0.9, weight_decay=5e-6)
+    net = AlexNet(num_classes=5)
+    optimizer = optim.Adam(net.parameters(), lr=hparams.initial_learning_rate)
 
     if args.checkpoint_path is not None:
         load_checkpoint(args.checkpoint_path, net, optimizer, reset_optimizer=False)
         
     log_path = '{}/train'.format(args.checkpoint_dir)
-    logger = logging_util.LoggingUtil(log_path).getLogger(__name__)
+    # logger = logging_util.LoggingUtil(log_path).getLogger(__name__)
     loss_func = torch.nn.CrossEntropyLoss()
     model = net.to(device)
-    train(device, model, train_data_loader, train_num, val_data_loader, val_num, optimizer, logger, loss_func,
+    train(device, model, train_data_loader, train_num, val_data_loader, val_num, optimizer, loss_func,
           checkpoint_dir=args.checkpoint_dir,
           checkpoint_interval=hparams.checkpoint_interval,
           nepochs=hparams.nepochs)
