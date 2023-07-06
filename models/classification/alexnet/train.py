@@ -2,23 +2,25 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-07-05 18:08:27
+LastEditTime: 2023-07-06 19:26:53
 Description: 请填写简介
 '''
 import argparse
 from datasets.dataset import Dataset
-from scripts.hparams import hparams
+import hparams
 import torch
 from torch.utils import data as data_utils
 from torch import optim
 import torch.nn.functional as F
+from torchvision import transforms, datasets, utils
 
 from models.classification.alexnet import AlexNet
 from utils import logging_util
 from os.path import join
 from tqdm import tqdm
 import time
-
+import os
+import json
 
 parser = argparse.ArgumentParser(description='Code to train the model')
 parser.add_argument("--data_root", help="Root folder of the dataset", default="./data/oxford-iiit-pet/images/", type=str)
@@ -73,22 +75,21 @@ def train(device, model, train_data_loader, train_dataset_len, test_data_loader,
  
     while global_epoch < nepochs:
         print('Starting Epoch: {}'.format(global_epoch))
-        running_sync_loss, running_l1_loss = 0., 0.
-        prog_bar = tqdm(enumerate(train_data_loader))
+        running_loss = 0., 0.
+        model.train()
         
-        for step, (x,  gt) in prog_bar:
-            model.train()
-            optimizer.zero_grad()
-
+        for step, (x,  gt) in enumerate(train_data_loader):
+            if step == 0:
+                continue
+            
             # Move data to CUDA device
             x = x.float().to(device)
-            # x = torch.FloatTensor(x).to(device)
             gt = gt.to(device)
 
             pred = model(x)
-
             loss = loss_func(pred, gt)
-            
+            optimizer.zero_grad()
+
 
             loss.backward()
             optimizer.step()
@@ -97,12 +98,15 @@ def train(device, model, train_data_loader, train_dataset_len, test_data_loader,
             cur_session_steps = global_step - resumed_step
 
             if global_step == 1 or global_step % checkpoint_interval == 0:
-                save_checkpoint(
-                    model, optimizer, global_step, checkpoint_dir, global_epoch)
+                # save_checkpoint(
+                #     model, optimizer, global_step, checkpoint_dir, global_epoch)
+                pass
 
             if global_step == 1 or global_step % hparams.checkpoint_interval == 0:
                 with torch.no_grad():
                     eval_model(test_data_loader, test_dataset_len, global_step, device, model, checkpoint_dir, loss_func)
+            # print("loss: ", loss.item())
+            # prog_bar.set_description("loss: ".format(loss.item()))
 
         global_epoch += 1
         
@@ -133,7 +137,7 @@ def eval_model(test_data_loader, test_dataset_len, global_step, device, model, c
 
         #     return averaged_loss
     acc = acc/test_dataset_len
-    print(acc)
+    print("acc ",acc)
 
 def save_checkpoint(model, optimizer, step, checkpoint_dir, epoch):
 
@@ -159,11 +163,46 @@ def _load(checkpoint_path):
 
 if __name__ == "__main__":
     torch.manual_seed(3407)
+    data_transform = {
+        "train":transforms.Compose([transforms.RandomResizedCrop(224),
+                                    transforms.RandomHorizontalFlip(),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
+        "val":transforms.Compose([transforms.Resize((224, 224)),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    }
+    data_root = os.path.abspath(os.path.join(os.gewcwd(), "../../../"))
+    image_path = os.path.join(data_root, "data_set", "flower_data")
+
     train_dataset = Dataset(args.data_root, args.file_list, "trainval.txt")
     val_dataset = Dataset(args.data_root, args.file_list, "test.txt")
+    assert os.path.exists(image_path), "{} path does not exist.".format(image_path)
+    train_dataset = datasets.ImageFolder(root=os.path.join(image_path, "train"), transform=data_transform["train"])
+    train_num = len(train_dataset)
 
-    train_data_loader = data_utils.DataLoader(train_dataset, hparams.batch_size, shuffle=True)
-    val_data_loader = data_utils.DataLoader(val_dataset, hparams.batch_size, shuffle=True)
+    label_list = train_dataset.class_to_idx
+    class_dict = dict((value, key)for key, value in label_list.items())
+    label_json = json.dump(class_dict, indent=4)
+    with open("class_indices.json", "w") as f:
+        f.write(label_json)
+    
+    batch_size = hparams.batch_size
+    number_worker = hparams.number_worker
+    train_data_loader = torch.utils.data.Dataloader(train_dataset,
+                                               batch_size=batch_size, shuffle=True,
+                                               number_worker= number_worker)
+    
+    val_dataset = datasets.ImageFolder(root=os.path.join(image_path, "val"), transform=data_transform["val"])
+    val_num = len(val_dataset)
+    val_data_loader = torch.utils.data.Dataloader(val_dataset,
+                                               batch_size=batch_size, shuffle=False,
+                                               number_worker= number_worker)
+
+
+
+    # train_data_loader = data_utils.DataLoader(train_dataset, hparams.batch_size, shuffle=True)
+    # val_data_loader = data_utils.DataLoader(val_dataset, hparams.batch_size, shuffle=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -178,7 +217,7 @@ if __name__ == "__main__":
     logger = logging_util.LoggingUtil(log_path).getLogger(__name__)
     loss_func = torch.nn.CrossEntropyLoss()
     model = net.to(device)
-    train(device, model, train_data_loader, train_dataset.data.shape[0], val_data_loader, val_dataset.data.shape[0], optimizer, logger, loss_func,
+    train(device, model, train_data_loader, train_num, val_data_loader, val_num, optimizer, logger, loss_func,
           checkpoint_dir=args.checkpoint_dir,
           checkpoint_interval=hparams.checkpoint_interval,
           nepochs=hparams.nepochs)

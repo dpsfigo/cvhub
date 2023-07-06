@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-30 14:45:41
 LastEditors: dpsfigo
-LastEditTime: 2023-07-05 18:07:44
+LastEditTime: 2023-07-06 19:16:50
 Description: 请填写简介
 '''
 class HParams:
@@ -20,7 +20,8 @@ class HParams:
 hparams = HParams(
     nepochs = 100,
     batch_size = 16,
-    initial_learning_rate = 1e-1,
+    number_worker = 2,
+    initial_learning_rate = 1e-4,
     checkpoint_interval = 10,
     save_optimizer_state=True,
 )

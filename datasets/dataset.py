@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-29 17:46:45
 LastEditors: dpsfigo
-LastEditTime: 2023-07-05 14:46:40
+LastEditTime: 2023-07-06 14:12:17
 Description: 请填写简介
 '''
 import os
@@ -30,7 +30,7 @@ class Dataset():
         while 1:
             data = self.data[index]
             img = cv2.imread(os.path.join(self.data_root,data[0]+".jpg"))
-            img = cv2.resize(img, (224, 224))
+            img = cv2.resize(img, (224, 224))/255.
             label = int(data[1])
             # x = torch.FloatTensor(img)
             # y = torch.FloatTensor(label)
