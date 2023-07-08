@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-07-08 15:45:47
+LastEditTime: 2023-07-08 15:53:21
 Description: 请填写简介
 '''
 import argparse
@@ -51,9 +51,7 @@ def load_checkpoint(path, model, optimizer, reset_optimizer=False, overwrite_glo
     s = checkpoint["state_dict"]
     new_s = {}
     for k, v in s.items():
-        # new_s[k.replace('module.', '')] = v
         new_s[k] = v  # ================================
-        # new_s[k] = v
     model.load_state_dict(new_s)
     if not reset_optimizer:
         optimizer_state = checkpoint["optimizer"]
