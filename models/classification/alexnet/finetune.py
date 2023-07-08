@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-07-08 09:33:59
 LastEditors: dpsfigo
-LastEditTime: 2023-07-08 15:44:57
+LastEditTime: 2023-07-08 15:57:01
 Description: 请填写简介
 '''
 import argparse
@@ -191,7 +191,9 @@ if __name__ == "__main__":
     label_list = train_dataset.class_to_idx
     class_dict = dict((value, key)for key, value in label_list.items())
     label_json = json.dumps(class_dict, indent=4)
-    with open("class_indices.json", "w") as f:
+    cur_folder_path = os.path.dirname(os.path.realpath(__file__))
+    label_indices_path = os.path.join(cur_folder_path, "class_indices.json")
+    with open(label_indices_path, "w") as f:
         f.write(label_json)
     
     batch_size = hparams.batch_size
