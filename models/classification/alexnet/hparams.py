@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-30 14:45:41
 LastEditors: dpsfigo
-LastEditTime: 2023-07-06 19:16:50
+LastEditTime: 2023-07-07 18:07:26
 Description: 请填写简介
 '''
 class HParams:
@@ -18,7 +18,7 @@ class HParams:
         return self.data[key]
 
 hparams = HParams(
-    nepochs = 100,
+    nepochs = 10,
     batch_size = 16,
     number_worker = 2,
     initial_learning_rate = 1e-4,
