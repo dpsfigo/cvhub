@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-07-06 19:42:28
+LastEditTime: 2023-07-08 11:31:57
 Description: 请填写简介
 '''
 import argparse
@@ -23,8 +23,7 @@ import os
 import json
 
 parser = argparse.ArgumentParser(description='Code to train the model')
-parser.add_argument("--data_root", help="Root folder of the dataset", default="./data/oxford-iiit-pet/images/", type=str)
-parser.add_argument("--file_list", help="Root folder of the filelist", default="./data/oxford-iiit-pet/annotations/", type=str)
+parser.add_argument("--data_root", help="Root folder of the dataset", default="./data/flower_data/", type=str)
 parser.add_argument('--checkpoint_dir', help='Save checkpoints to this directory', default="./checkpoints/", type=str)
 parser.add_argument('--checkpoint_path', help='Resume model from this checkpoint', default=None, type=str)
 args = parser.parse_args()
@@ -98,8 +97,8 @@ def train(device, model, train_data_loader, train_dataset_len, test_data_loader,
             cur_session_steps = global_step - resumed_step
 
             if global_step == 1 or global_step % checkpoint_interval == 0:
-                # save_checkpoint(
-                #     model, optimizer, global_step, checkpoint_dir, global_epoch)
+                save_checkpoint(
+                    model, optimizer, global_step, checkpoint_dir, global_epoch)
                 pass
 
             if global_step == 1 or global_step % hparams.checkpoint_interval == 0:
@@ -172,11 +171,10 @@ if __name__ == "__main__":
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     }
-    data_root = os.path.abspath(os.path.join(os.getcwd(), "./"))
-    image_path = os.path.join(data_root, "data", "flower_data")
+    # data_root = os.path.abspath(os.path.join(os.getcwd(), "./"))
+    # image_path = os.path.join(data_root, "data", "flower_data")
+    image_path = args.data_root
 
-    # train_dataset = Dataset(args.data_root, args.file_list, "trainval.txt")
-    # val_dataset = Dataset(args.data_root, args.file_list, "test.txt")
     assert os.path.exists(image_path), "{} path does not exist.".format(image_path)
     train_dataset = datasets.ImageFolder(root=os.path.join(image_path, "train"), transform=data_transform["train"])
     train_num = len(train_dataset)
@@ -184,7 +182,9 @@ if __name__ == "__main__":
     label_list = train_dataset.class_to_idx
     class_dict = dict((value, key)for key, value in label_list.items())
     label_json = json.dumps(class_dict, indent=4)
-    with open("class_indices.json", "w") as f:
+    cur_folder_path = os.path.dirname(os.path.realpath(__file__))
+    label_indices_path = os.path.join(cur_folder_path, "class_indices.json")
+    with open(label_indices_path, "w") as f:
         f.write(label_json)
     
     batch_size = hparams.batch_size
