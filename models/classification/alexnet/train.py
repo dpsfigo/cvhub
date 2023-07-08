@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-07-08 11:31:57
+LastEditTime: 2023-07-08 15:45:47
 Description: 请填写简介
 '''
 import argparse
@@ -25,7 +25,7 @@ import json
 parser = argparse.ArgumentParser(description='Code to train the model')
 parser.add_argument("--data_root", help="Root folder of the dataset", default="./data/flower_data/", type=str)
 parser.add_argument('--checkpoint_dir', help='Save checkpoints to this directory', default="./checkpoints/", type=str)
-parser.add_argument('--checkpoint_path', help='Resume model from this checkpoint', default=None, type=str)
+parser.add_argument('--checkpoint_path', help='Resume model from this checkpoint', default="./checkpoints/checkpoint_step000000001.pth", type=str)
 args = parser.parse_args()
 
 global_step = 0
@@ -52,7 +52,7 @@ def load_checkpoint(path, model, optimizer, reset_optimizer=False, overwrite_glo
     new_s = {}
     for k, v in s.items():
         # new_s[k.replace('module.', '')] = v
-        new_s['module.' + k] = v  # ================================
+        new_s[k] = v  # ================================
         # new_s[k] = v
     model.load_state_dict(new_s)
     if not reset_optimizer:
@@ -111,7 +111,6 @@ def train(device, model, train_data_loader, train_dataset_len, test_data_loader,
         
 
 def eval_model(test_data_loader, test_dataset_len, global_step, device, model, checkpoint_dir, loss_func):
-    eval_steps = 700
     losses = []
     step = 0
     acc = 0.0
