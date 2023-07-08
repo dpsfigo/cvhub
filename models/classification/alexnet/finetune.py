@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-07-08 09:33:59
 LastEditors: dpsfigo
-LastEditTime: 2023-07-08 10:04:14
+LastEditTime: 2023-07-08 15:37:16
 Description: 请填写简介
 '''
 import argparse
@@ -25,8 +25,7 @@ import os
 import json
 
 parser = argparse.ArgumentParser(description='Code to train the model')
-parser.add_argument("--data_root", help="Root folder of the dataset", default="./data/oxford-iiit-pet/images/", type=str)
-parser.add_argument("--file_list", help="Root folder of the filelist", default="./data/oxford-iiit-pet/annotations/", type=str)
+parser.add_argument("--data_root", help="Root folder of the dataset", default="./data/flow_data/", type=str)
 parser.add_argument('--checkpoint_dir', help='Save checkpoints to this directory', default="./checkpoints/", type=str)
 parser.add_argument('--checkpoint_path', help='Resume model from this checkpoint', default=None, type=str)
 args = parser.parse_args()
@@ -179,8 +178,9 @@ if __name__ == "__main__":
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     }
-    data_root = os.path.abspath(os.path.join(os.getcwd(), "./"))
-    image_path = os.path.join(data_root, "data", "flower_data")
+    # data_root = os.path.abspath(os.path.join(os.getcwd(), "./"))
+    # image_path = os.path.join(data_root, "data", "flower_data")
+    image_path = args.data_root
 
     # train_dataset = Dataset(args.data_root, args.file_list, "trainval.txt")
     # val_dataset = Dataset(args.data_root, args.file_list, "test.txt")
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     set_parameter_requires_grad(net, featue_extract)
     #修改模型
     num_ftrs = net.classifier[6].in_features
-    net.classifier[6] = nn.Linear(in_features=num_ftrs, out_features=5, bias=True)
+    net.classifier[6] = nn.Linear(in_features=num_ftrs, out_features=len(label_list), bias=True)
     optimizer = optim.Adam(net.parameters(), lr=hparams.initial_learning_rate)
 
     if args.checkpoint_path is not None:
