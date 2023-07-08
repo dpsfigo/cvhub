@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-27 15:40:01
 LastEditors: dpsfigo
-LastEditTime: 2023-07-08 15:53:21
+LastEditTime: 2023-07-08 16:59:54
 Description: 请填写简介
 '''
 import argparse
@@ -13,6 +13,7 @@ from torch.utils import data as data_utils
 from torch import optim
 import torch.nn.functional as F
 from torchvision import transforms, datasets, utils
+from torch.utils.tensorboard import SummaryWriter
 
 from alexnet import AlexNet
 # from utils import logging_util
@@ -64,7 +65,7 @@ def load_checkpoint(path, model, optimizer, reset_optimizer=False, overwrite_glo
 
     return model
 
-def train(device, model, train_data_loader, train_dataset_len, test_data_loader, test_dataset_len, optimizer, loss_func,
+def train(device, model, train_data_loader, train_dataset_len, test_data_loader, test_dataset_len, optimizer, loss_func, writer,
           checkpoint_dir=None, checkpoint_interval=None, nepochs=None):
 
     global global_step, global_epoch
@@ -101,14 +102,16 @@ def train(device, model, train_data_loader, train_dataset_len, test_data_loader,
 
             if global_step == 1 or global_step % hparams.checkpoint_interval == 0:
                 with torch.no_grad():
-                    eval_model(test_data_loader, test_dataset_len, global_step, device, model, checkpoint_dir, loss_func)
+                    eval_model(test_data_loader, test_dataset_len, global_step, device, model, checkpoint_dir, loss_func, writer)
+            if global_step ==1 or global_step % hparams.watch_interval == 0:
+                writer.add_scalar("Train/loss", loss.item(), global_epoch*len(train_data_loader) + global_step + 1)
             # print("loss: ", loss.item())
             # prog_bar.set_description("loss: ".format(loss.item()))
 
         global_epoch += 1
         
 
-def eval_model(test_data_loader, test_dataset_len, global_step, device, model, checkpoint_dir, loss_func):
+def eval_model(test_data_loader, test_dataset_len, global_step, device, model, checkpoint_dir, loss_func, writer):
     losses = []
     step = 0
     acc = 0.0
@@ -133,6 +136,7 @@ def eval_model(test_data_loader, test_dataset_len, global_step, device, model, c
 
         #     return averaged_loss
     acc = acc/test_dataset_len
+    writer.add_scalar("Val/acc", acc, global_epoch)
     print("acc ",acc)
 
 def save_checkpoint(model, optimizer, step, checkpoint_dir, epoch):
@@ -208,7 +212,8 @@ if __name__ == "__main__":
     # logger = logging_util.LoggingUtil(log_path).getLogger(__name__)
     loss_func = torch.nn.CrossEntropyLoss()
     model = net.to(device)
-    train(device, model, train_data_loader, train_num, val_data_loader, val_num, optimizer, loss_func,
+    writer = SummaryWriter(log_dir=os.path.join(args.checkpoint_dir, "regress"))
+    train(device, model, train_data_loader, train_num, val_data_loader, val_num, optimizer, loss_func,writer,
           checkpoint_dir=args.checkpoint_dir,
           checkpoint_interval=hparams.checkpoint_interval,
           nepochs=hparams.nepochs)

@@ -2,7 +2,7 @@
 Author: dpsfigo
 Date: 2023-06-30 14:45:41
 LastEditors: dpsfigo
-LastEditTime: 2023-07-07 18:07:26
+LastEditTime: 2023-07-08 17:01:11
 Description: 请填写简介
 '''
 class HParams:
@@ -24,6 +24,7 @@ hparams = HParams(
     initial_learning_rate = 1e-4,
     checkpoint_interval = 10,
     save_optimizer_state=True,
+    watch_interval = 10
 )
     
     
